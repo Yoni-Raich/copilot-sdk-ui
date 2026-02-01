@@ -11,6 +11,7 @@ import {
   Server,
   ClipboardList,
   FileSearch,
+  FileText,
   Zap,
   LogIn,
   LogOut,
@@ -26,6 +27,7 @@ interface SidebarProps {
   onSelectSession: (id: string) => void;
   onDeleteSession: (id: string) => void;
   onOpenSkills: () => void;
+  onOpenInstructions: () => void;
   onOpenWorkspace: () => void;
   onOpenMCP?: () => void;
   onOpenPlan?: () => void;
@@ -47,6 +49,7 @@ export default function Sidebar({
   onSelectSession,
   onDeleteSession,
   onOpenSkills,
+  onOpenInstructions,
   onOpenWorkspace,
   onOpenMCP,
   onOpenPlan,
@@ -144,6 +147,12 @@ export default function Sidebar({
             <div className="nav-item" onClick={onOpenSkills}>
               <Puzzle size={18} />
               Skills
+              <ChevronRight size={14} className="nav-item-arrow" />
+            </div>
+
+            <div className="nav-item" onClick={onOpenInstructions}>
+              <FileText size={18} />
+              Agent Instructions
               <ChevronRight size={14} className="nav-item-arrow" />
             </div>
           </div>

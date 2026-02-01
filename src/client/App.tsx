@@ -3,6 +3,7 @@ import Sidebar from './components/Sidebar';
 import ChatView from './components/ChatView';
 import SkillsModal from './components/SkillsModal';
 import WorkspaceModal from './components/WorkspaceModal';
+import InstructionsModal from './components/InstructionsModal';
 import MCPModal from './components/MCPModal';
 import PlanModal from './components/PlanModal';
 import ReviewModal from './components/ReviewModal';
@@ -15,6 +16,7 @@ export default function App() {
   const [workspace, setWorkspace] = useState<string>('');
   const [showSkillsModal, setShowSkillsModal] = useState(false);
   const [showWorkspaceModal, setShowWorkspaceModal] = useState(false);
+  const [showInstructionsModal, setShowInstructionsModal] = useState(false);
   const [showMCPModal, setShowMCPModal] = useState(false);
   const [showPlanModal, setShowPlanModal] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
@@ -199,6 +201,7 @@ export default function App() {
         onDeleteSession={deleteSession}
         onOpenSkills={() => { setShowSkillsModal(true); closeSidebarOnMobile(); }}
         onOpenWorkspace={() => { setShowWorkspaceModal(true); closeSidebarOnMobile(); }}
+        onOpenInstructions={() => { setShowInstructionsModal(true); closeSidebarOnMobile(); }}
         onOpenMCP={() => { setShowMCPModal(true); closeSidebarOnMobile(); }}
         onOpenPlan={() => { setShowPlanModal(true); closeSidebarOnMobile(); }}
         onOpenReview={() => { setShowReviewModal(true); closeSidebarOnMobile(); }}
@@ -235,6 +238,14 @@ export default function App() {
           currentWorkspace={workspace}
           onClose={() => setShowWorkspaceModal(false)}
           onSelect={updateWorkspace}
+        />
+      )}
+
+      {showInstructionsModal && (
+        <InstructionsModal
+          isOpen={showInstructionsModal}
+          onClose={() => setShowInstructionsModal(false)}
+          workspace={workspace}
         />
       )}
 
