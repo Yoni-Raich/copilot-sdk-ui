@@ -63,13 +63,27 @@ export default function ChatView({
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const [userScrolledUp, setUserScrolledUp] = useState(false);
 
+  const scrollToBottom = useCallback(() => {
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+    }
+  }, []);
+
+  // Smart auto-scroll: Only scroll if user hasn't manually scrolled up
   useEffect(() => {
-    scrollToBottom();
-  }, [messages, streamContent]);
+    if (!userScrolledUp) {
+      scrollToBottom();
+    }
+  }, [messages, streamContent, userScrolledUp, scrollToBottom]);
+
+  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+    const isAtBottom = scrollHeight - scrollTop - clientHeight < 100;
+    setUserScrolledUp(!isAtBottom);
+  }, []);
 
   useEffect(() => {
     if (session) {
@@ -125,9 +139,18 @@ export default function ChatView({
           setStreamContent(prev => prev + data.content);
           break;
         case 'complete':
-          setMessages(prev => [...prev, data.message]);
+          // Fallback: If server message is empty but we have streamed content, use it
+          // This prevents "disappearing" messages if the server payload is malformed
+          const finalMsg = data.message;
+          if (!finalMsg.content && streamContent) {
+            console.warn('ChatView: Received empty completion message, using stream buffer');
+            finalMsg.content = streamContent;
+          }
+          setMessages(prev => [...prev, finalMsg]);
           setStreamContent('');
           setIsStreaming(false);
+          // Force scroll to bottom on completion to show final result
+          setUserScrolledUp(false);
           break;
         case 'cancelled':
           setStreamContent('');
@@ -140,6 +163,12 @@ export default function ChatView({
           break;
         case 'model_set':
           console.log('Model set to:', data.model);
+          break;
+        case 'tool_start':
+          setStreamContent(prev => `${prev}\n\n> 🔧 **Tool Call:** \`${data.tool}\`\n> \n> Arguments:\n> \`\`\`json\n> ${data.arguments}\n> \`\`\`\n\n`);
+          break;
+        case 'tool_complete':
+          setStreamContent(prev => `${prev}\n\n> ✅ **Tool Result:** \`${data.tool}\`\n\n`);
           break;
       }
     };
@@ -189,13 +218,56 @@ export default function ChatView({
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSubmit(e);
+      // Ensure we're not composing (IME)
+      if (e.nativeEvent.isComposing) return;
+      
+      if (input.trim() && !isStreaming) {
+         if (!sessionId) {
+            onNewChat();
+         } else if (wsRef.current?.readyState === WebSocket.OPEN) {
+            setIsStreaming(true);
+            wsRef.current.send(JSON.stringify({
+               type: 'message',
+               content: input.trim(),
+            }));
+            setInput('');
+            // Reset height
+            if (inputRef.current) inputRef.current.style.height = 'auto';
+         }
+      }
     }
     // Handle Escape to close command palette
     if (e.key === 'Escape' && showCommandPalette) {
       setShowCommandPalette(false);
       setInput('');
     }
+  };
+
+  // Auto-resize textarea
+  const adjustTextareaHeight = () => {
+    if (inputRef.current) {
+      inputRef.current.style.height = 'auto';
+      inputRef.current.style.height = Math.min(inputRef.current.scrollHeight, 150) + 'px';
+    }
+  };
+
+  useEffect(() => {
+    adjustTextareaHeight();
+  }, [input]);
+
+  // Initial adjustment and window resize
+  useEffect(() => {
+    adjustTextareaHeight();
+    window.addEventListener('resize', adjustTextareaHeight);
+    return () => window.removeEventListener('resize', adjustTextareaHeight);
+  }, []);
+
+  const handleInputFocus = () => {
+    // slight delay to allow keyboard to appear, then scroll
+    setTimeout(() => {
+      setUserScrolledUp(false);
+      scrollToBottom();
+    }, 300);
   };
 
   const handleModelSelect = (modelId: string) => {
@@ -339,6 +411,13 @@ export default function ChatView({
 
   const currentModelInfo = models.find(m => m.id === currentModel);
 
+  // Debug models
+  useEffect(() => {
+    if (models.length === 0) {
+      console.warn('ChatView: No models provided');
+    }
+  }, [models]);
+
   const renderMessage = (message: Message) => (
     <div key={message.id} className="message">
       <div className="message-header">
@@ -408,6 +487,11 @@ export default function ChatView({
             {showModelDropdown && (
               <div className="model-dropdown">
                 <div className="model-dropdown-header">Select Model</div>
+                {models.length === 0 && (
+                   <div className="empty-state-model" style={{padding: '16px', textAlign: 'center'}}>
+                     No models available
+                   </div>
+                )}
                 {['Anthropic', 'OpenAI', 'Google'].map(provider => {
                   const providerModels = models.filter(m => m.provider === provider);
                   if (providerModels.length === 0) return null;
@@ -426,6 +510,26 @@ export default function ChatView({
                     </div>
                   );
                 })}
+                {/* Catch-all for other providers */}
+                {(() => {
+                  const knownProviders = ['Anthropic', 'OpenAI', 'Google'];
+                  const otherModels = models.filter(m => !knownProviders.includes(m.provider));
+                  if (otherModels.length === 0) return null;
+                  return (
+                    <div key="other" className="model-group">
+                      <div className="model-group-title">Other</div>
+                      {otherModels.map(model => (
+                        <div
+                          key={model.id}
+                          className={`model-option ${model.id === currentModel ? 'active' : ''}`}
+                          onClick={() => handleModelSelect(model.id)}
+                        >
+                          {model.name}
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
               </div>
             )}
           </div>
@@ -433,7 +537,7 @@ export default function ChatView({
       </header>
 
       <div className="chat-container">
-        <div className="chat-messages">
+        <div className="chat-messages" ref={messagesContainerRef} onScroll={handleScroll}>
           {messages.length === 0 && !streamContent ? (
             <div className="empty-state">
               <h2>What can I help with?</h2>
@@ -495,6 +599,7 @@ export default function ChatView({
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
+              onFocus={handleInputFocus}
               rows={1}
               disabled={isStreaming}
             />

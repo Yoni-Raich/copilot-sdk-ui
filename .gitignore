@@ -3,6 +3,8 @@ node_modules/
 
 # Build output
 dist/
+out.js
+out.css
 
 # Environment variables
 .env
@@ -34,3 +36,5 @@ coverage/
 # Cache
 .cache/
 .parcel-cache/
+__pycache__/
+*.pyc

@@ -85,6 +85,7 @@ copilot
 | Command | Description |
 |---------|-------------|
 | `npm run dev` | Start both server and client in development mode |
+| `scripts/dev.sh` | Shell wrapper for `npm run dev` |
 | `npm run server` | Start only the backend server |
 | `npm run client` | Start only the Vite client |
 | `npm run build` | Build for production |
@@ -111,7 +112,10 @@ copilot-sdk-ui/
 │   │   ├── App.tsx                # Main app component
 │   │   └── types.ts               # TypeScript interfaces
 │   └── server/
-│       └── index.ts               # Express + WebSocket server
+│       ├── api/                   # FastAPI routers and dependencies
+│       ├── domain/                # Business logic and models (Hexagonal)
+│       ├── infrastructure/        # Implementations (Copilot SDK, FS)
+│       └── server.py              # Application entry point
 ├── index.html
 ├── package.json
 ├── tsconfig.json
@@ -121,7 +125,7 @@ copilot-sdk-ui/
 ## Tech Stack
 
 - **Frontend**: React 18, TypeScript, Vite
-- **Backend**: Express, WebSocket (express-ws)
+- **Backend**: Python, FastAPI, WebSockets
 - **Styling**: CSS with custom properties
 - **Icons**: Lucide React
 - **Markdown**: react-markdown
