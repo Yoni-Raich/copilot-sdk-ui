@@ -8,12 +8,25 @@ from pydantic import BaseModel, Field
 import uuid
 
 
+class FileAttachment(BaseModel):
+    """A file attachment."""
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    session_id: str
+    filename: str
+    original_filename: str
+    path: str
+    size: int
+    mime_type: str
+    created_at: datetime = Field(default_factory=datetime.now)
+
+
 class Message(BaseModel):
     """A chat message."""
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     role: Literal["user", "assistant", "system"]
     content: str
     timestamp: datetime = Field(default_factory=datetime.now)
+    attachments: list[FileAttachment] = Field(default_factory=list)
 
 
 class Session(BaseModel):

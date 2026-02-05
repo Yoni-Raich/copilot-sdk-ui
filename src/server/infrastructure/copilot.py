@@ -1,4 +1,4 @@
-from typing import List, Any, Optional
+from typing import List, Any, Optional, Dict
 from copilot import CopilotClient
 from domain.interfaces import CopilotService
 from domain.models import ModelInfo
@@ -7,12 +7,22 @@ class CopilotClientService(CopilotService):
     def __init__(self):
         self.client = None
         self.active_sessions = {}
+        self.session_clients: Dict[str, CopilotClient] = {}
 
     async def start(self):
+        # Create a default client for listing models
         self.client = CopilotClient()
         await self.client.start()
 
     async def stop(self):
+        # Stop all session-specific clients
+        for client in self.session_clients.values():
+            try:
+                await client.stop()
+            except Exception:
+                pass
+        self.session_clients.clear()
+        
         if self.client:
             await self.client.stop()
 
@@ -50,15 +60,33 @@ class CopilotClientService(CopilotService):
                 ModelInfo(id="gemini-3-pro-preview", name="Gemini 3 Pro Preview", provider="Google"),
             ]
 
-    async def create_session(self, model: str, workspace: str, session_id: Optional[str] = None) -> Any:
+    async def create_session(self, model: str, workspace: str, session_id: Optional[str] = None, skill_directories: Optional[List[str]] = None) -> Any:
         if not self.client:
             raise RuntimeError("Copilot client not initialized")
         
-        session = await self.client.create_session({
+        # Use workspace or fallback to current directory
+        import os
+        effective_cwd = workspace if workspace else os.getcwd()
+        
+        # Create a session-specific client with the correct working directory
+        session_client = CopilotClient({"cwd": effective_cwd})
+        await session_client.start()
+        
+        # Store client for later cleanup
+        if session_id:
+            self.session_clients[session_id] = session_client
+        
+        # Build session config
+        session_config = {
             "model": model,
             "streaming": True,
-            "working_directory": workspace,
-        })
+        }
+        
+        # Add skill directories if provided
+        if skill_directories:
+            session_config["skill_directories"] = skill_directories
+        
+        session = await session_client.create_session(session_config)
         if session_id:
             self.active_sessions[session_id] = session
         return session
@@ -69,3 +97,15 @@ class CopilotClientService(CopilotService):
     def remove_active_session(self, session_id: str):
         if session_id in self.active_sessions:
             del self.active_sessions[session_id]
+        # Also cleanup the session client
+        if session_id in self.session_clients:
+            # Schedule async cleanup
+            client = self.session_clients.pop(session_id)
+            import asyncio
+            asyncio.create_task(self._stop_client(client))
+    
+    async def _stop_client(self, client: CopilotClient):
+        try:
+            await client.stop()
+        except Exception:
+            pass

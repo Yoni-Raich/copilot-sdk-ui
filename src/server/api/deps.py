@@ -1,4 +1,4 @@
-from infrastructure.repositories import InMemorySessionRepository, InMemoryPlanRepository
+from infrastructure.repositories import InMemorySessionRepository, InMemoryPlanRepository, InMemoryFileAttachmentRepository
 from infrastructure.workspace import FileSystemWorkspaceService
 from infrastructure.copilot import CopilotClientService
 from infrastructure.settings import InMemorySettingsService
@@ -7,6 +7,7 @@ from infrastructure.mcp import InMemoryMCPService
 # Singletons
 session_repo = InMemorySessionRepository()
 plan_repo = InMemoryPlanRepository()
+file_attachment_repo = InMemoryFileAttachmentRepository()
 workspace_service = FileSystemWorkspaceService()
 copilot_service = CopilotClientService()
 settings_service = InMemorySettingsService()
@@ -35,6 +36,9 @@ def get_settings_service():
 
 def get_mcp_service():
     return mcp_service
+
+def get_file_attachment_repo():
+    return file_attachment_repo
 
 def get_global_state():
     return global_state

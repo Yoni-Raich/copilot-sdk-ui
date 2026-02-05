@@ -5,7 +5,7 @@ from .models import (
     ModelInfo, Skill, MCPServer, MCPServerCreate,
     AppSettings, Plan, PlanCreate,
     WorkspaceResponse, FileEntry, ReviewResponse,
-    InstructionsResponse
+    InstructionsResponse, FileAttachment
 )
 
 class SessionRepository(ABC):
@@ -69,6 +69,18 @@ class WorkspaceService(ABC):
     async def get_skills(self) -> List[Skill]: ...
     
     @abstractmethod
+    async def create_skill(self, name: str) -> Skill: ...
+    
+    @abstractmethod
+    async def import_skill(self, url: str) -> Skill: ...
+    
+    @abstractmethod
+    async def delete_skill(self, name: str) -> bool: ...
+    
+    @abstractmethod
+    async def get_skill_directories(self, workspace: Optional[str] = None) -> List[str]: ...
+    
+    @abstractmethod
     async def run_review(self, workspace: Optional[str] = None) -> ReviewResponse: ...
 
     @abstractmethod
@@ -105,4 +117,17 @@ class CopilotService(ABC):
     async def list_models(self) -> List[ModelInfo]: ...
     
     @abstractmethod
-    async def create_session(self, model: str, workspace: str) -> Any: ...
+    async def create_session(self, model: str, workspace: str, session_id: Optional[str] = None, skill_directories: Optional[List[str]] = None) -> Any: ...
+
+class FileAttachmentRepository(ABC):
+    @abstractmethod
+    async def save(self, attachment: FileAttachment) -> FileAttachment: ...
+    
+    @abstractmethod
+    async def get(self, file_id: str) -> Optional[FileAttachment]: ...
+    
+    @abstractmethod
+    async def delete(self, file_id: str) -> bool: ...
+    
+    @abstractmethod
+    async def list_by_session(self, session_id: str) -> List[FileAttachment]: ...

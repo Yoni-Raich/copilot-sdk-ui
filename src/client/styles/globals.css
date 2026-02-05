@@ -337,7 +337,7 @@ body {
 
 /* Input Area */
 .input-container {
-  padding: 16px 24px 24px;
+  padding: 0;
   background: linear-gradient(to top, var(--bg-primary) 80%, transparent);
 }
 
@@ -345,14 +345,18 @@ body {
   max-width: 800px;
   margin: 0 auto;
   position: relative;
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 16px 24px 24px;
 }
 
 .chat-input {
-  width: 100%;
+  flex: 1;
   background-color: var(--bg-input);
   border: 1px solid var(--border-color);
   border-radius: 24px;
-  padding: 14px 52px 14px 20px;
+  padding: 14px 52px 14px 52px;
   font-size: 15px;
   color: var(--text-primary);
   outline: none;
@@ -371,8 +375,8 @@ body {
 
 .send-button {
   position: absolute;
-  right: 8px;
-  bottom: 8px;
+  right: 32px;
+  bottom: 32px;
   width: 36px;
   height: 36px;
   border-radius: 50%;
@@ -905,7 +909,7 @@ body {
   }
 
   .chat-input {
-    padding: 12px 48px 12px 16px;
+    padding: 12px 48px 12px 48px;
     font-size: 16px; /* Prevent zoom on iOS */
     border-radius: 20px;
     min-height: 48px;
@@ -915,8 +919,16 @@ body {
   .send-button {
     width: 44px;
     height: 44px;
-    right: 4px;
-    bottom: 4px;
+    right: 16px;
+    bottom: 20px;
+    /* Ensure touch targets are large */
+  }
+
+  .attach-button {
+    width: 44px;
+    height: 44px;
+    left: 16px;
+    bottom: 20px;
     /* Ensure touch targets are large */
   }
   
@@ -929,6 +941,10 @@ body {
     .send-button.active:hover {
         background-color: var(--accent-color);
         color: white;
+    }
+    .attach-button:hover {
+      background-color: var(--text-muted);
+      color: var(--bg-primary);
     }
   }
 
@@ -2401,4 +2417,195 @@ body {
    ======================== */
 :root {
   --warning-color: #f59e0b;
+}
+
+/* ========================
+   File Attachments
+   ======================== */
+
+/* Attach button in input area */
+.attach-button {
+  position: absolute;
+  left: 32px;
+  bottom: 32px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background-color: var(--text-muted);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--bg-primary);
+  transition: background-color 0.15s ease;
+}
+
+.attach-button:hover:not(:disabled) {
+  background-color: var(--text-primary);
+}
+
+.attach-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Attachments preview area above input */
+.attachments-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+}
+
+.attachment-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  max-width: 280px;
+}
+
+.attachment-thumbnail {
+  width: 40px;
+  height: 40px;
+  border-radius: 4px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.attachment-thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.attachment-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: var(--bg-hover);
+  border-radius: 4px;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.attachment-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.attachment-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.attachment-size {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.attachment-remove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.attachment-remove:hover {
+  background: var(--bg-hover);
+  color: var(--error-color);
+}
+
+/* Message attachments display */
+.message-attachments {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.message-attachment {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.attachment-image-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 400px;
+}
+
+.attachment-image {
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+}
+
+.attachment-image-caption {
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 4px 8px;
+}
+
+.attachment-file-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  color: var(--text-primary);
+  text-decoration: none;
+  transition: all 0.2s;
+  max-width: 400px;
+}
+
+.attachment-file-link:hover {
+  background: var(--bg-hover);
+  border-color: var(--accent-color);
+}
+
+.attachment-file-name {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.attachment-file-size {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.attachment-download-icon {
+  color: var(--text-secondary);
+  flex-shrink: 0;
 }

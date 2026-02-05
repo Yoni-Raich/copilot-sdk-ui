@@ -201,14 +201,14 @@ export default function SkillsModal({
           {activeTab === 'import' && (
             <div>
               <p style={{ color: 'var(--text-secondary)', marginBottom: '16px', fontSize: '14px' }}>
-                Import a skill from a URL. Paste the raw GitHub URL of a SKILL.md file to import it.
+                Import a skill from a URL. Paste a GitHub URL or raw URL to a SKILL.md file.
               </p>
               <div className="form-group">
                 <label className="form-label">Skill URL</label>
                 <input
                   type="url"
                   className="form-input"
-                  placeholder="https://raw.githubusercontent.com/user/repo/main/skills/my-skill/SKILL.md"
+                  placeholder="https://github.com/user/repo/blob/main/skills/my-skill/SKILL.md"
                   value={importUrl}
                   onChange={(e) => setImportUrl(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && importSkill()}
@@ -225,16 +225,24 @@ export default function SkillsModal({
               </button>
               <div style={{ marginTop: '16px', padding: '12px', background: 'var(--bg-tertiary)', borderRadius: '8px' }}>
                 <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '8px' }}>
-                  Example URLs:
+                  Browse skills:
                 </div>
-                <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                <div style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <a
+                    href="https://github.com/anthropics/skills"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ color: 'var(--accent-color)', display: 'flex', alignItems: 'center', gap: '4px' }}
+                  >
+                    Anthropic Skills <ExternalLink size={12} />
+                  </a>
                   <a
                     href="https://github.com/hoodini/ai-agents-skills"
                     target="_blank"
                     rel="noopener noreferrer"
                     style={{ color: 'var(--accent-color)', display: 'flex', alignItems: 'center', gap: '4px' }}
                   >
-                    Browse community skills <ExternalLink size={12} />
+                    Community Skills <ExternalLink size={12} />
                   </a>
                 </div>
               </div>

@@ -4,7 +4,7 @@ Copilot SDK UI - Python FastAPI Server (Refactored)
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from api.deps import get_copilot_service
-from api.routers import models, sessions, workspace, skills, settings, mcp, chat
+from api.routers import models, sessions, workspace, skills, settings, mcp, chat, uploads
 
 app = FastAPI(title="Copilot SDK UI Server", version="2.0.0")
 
@@ -25,6 +25,7 @@ app.include_router(skills.router)
 app.include_router(settings.router)
 app.include_router(mcp.router)
 app.include_router(chat.router)
+app.include_router(uploads.router)
 
 @app.on_event("startup")
 async def startup_event():

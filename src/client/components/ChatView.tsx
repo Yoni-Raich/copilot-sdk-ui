@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Send, Square, Menu, Sparkles, ChevronDown } from 'lucide-react';
+import { Send, Square, Menu, Sparkles, ChevronDown, Paperclip, X, File, Image as ImageIcon, Download } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
-import { Session, Message, Model } from '../types';
+import { Session, Message, Model, FileAttachment } from '../types';
 import CommandPalette, { SlashCommand, SLASH_COMMANDS } from './CommandPalette';
 import { SessionMenu, SettingsDropdown } from './HeaderDropdowns';
 import SessionModal from './SessionModal';
@@ -42,6 +42,11 @@ export default function ChatView({
   const [streamContent, setStreamContent] = useState('');
   const [showModelDropdown, setShowModelDropdown] = useState(false);
 
+  // File attachments state
+  const [pendingAttachments, setPendingAttachments] = useState<FileAttachment[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadQueue, setUploadQueue] = useState<FileList | null>(null);
+
   // Command palette state
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [inputRect, setInputRect] = useState<DOMRect | null>(null);
@@ -62,6 +67,7 @@ export default function ChatView({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const [userScrolledUp, setUserScrolledUp] = useState(false);
@@ -201,11 +207,14 @@ export default function ChatView({
 
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       setIsStreaming(true);
+      const attachmentIds = pendingAttachments.map(att => att.id);
       wsRef.current.send(JSON.stringify({
         type: 'message',
         content: input.trim(),
+        attachment_ids: attachmentIds.length > 0 ? attachmentIds : undefined,
       }));
       setInput('');
+      setPendingAttachments([]); // Clear attachments after sending
     }
   };
 
@@ -226,11 +235,14 @@ export default function ChatView({
             onNewChat();
          } else if (wsRef.current?.readyState === WebSocket.OPEN) {
             setIsStreaming(true);
+            const attachmentIds = pendingAttachments.map(att => att.id);
             wsRef.current.send(JSON.stringify({
                type: 'message',
                content: input.trim(),
+               attachment_ids: attachmentIds.length > 0 ? attachmentIds : undefined,
             }));
             setInput('');
+            setPendingAttachments([]); // Clear attachments after sending
             // Reset height
             if (inputRef.current) inputRef.current.style.height = 'auto';
          }
@@ -409,6 +421,78 @@ export default function ChatView({
     }
   };
 
+  const handleFileUpload = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+
+    if (!sessionId) {
+      setUploadQueue(files);
+      onNewChat();
+      return;
+    }
+
+    setIsUploading(true);
+
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('session_id', sessionId);
+
+        const response = await fetch('/api/uploads', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!response.ok) {
+          throw new Error(`Upload failed: ${response.statusText}`);
+        }
+
+        const attachment: FileAttachment = await response.json();
+        setPendingAttachments(prev => [...prev, attachment]);
+      }
+    } catch (error) {
+      console.error('File upload error:', error);
+      // TODO: Show error notification to user
+    } finally {
+      setIsUploading(false);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  // Effect to handle queued uploads once session is created
+  useEffect(() => {
+    if (sessionId && uploadQueue) {
+      handleFileUpload(uploadQueue);
+      setUploadQueue(null);
+    }
+  }, [sessionId, uploadQueue]);
+
+  const onFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    handleFileUpload(e.target.files);
+  };
+
+  const handleRemoveAttachment = (attachmentId: string) => {
+    setPendingAttachments(prev => prev.filter(att => att.id !== attachmentId));
+  };
+
+  const handleAttachClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  };
+
+  const isImageFile = (mimeType: string): boolean => {
+    return mimeType.startsWith('image/');
+  };
+
   const currentModelInfo = models.find(m => m.id === currentModel);
 
   // Debug models
@@ -429,6 +513,38 @@ export default function ChatView({
         </span>
       </div>
       <div className="message-content">
+        {/* Display attachments if present */}
+        {message.attachments && message.attachments.length > 0 && (
+          <div className="message-attachments">
+            {message.attachments.map(attachment => (
+              <div key={attachment.id} className="message-attachment">
+                {isImageFile(attachment.mime_type) ? (
+                  <div className="attachment-image-wrapper">
+                    <img
+                      src={`/api/uploads/${attachment.id}`}
+                      alt={attachment.original_filename}
+                      className="attachment-image"
+                    />
+                    <div className="attachment-image-caption">
+                      {attachment.original_filename}
+                    </div>
+                  </div>
+                ) : (
+                  <a
+                    href={`/api/uploads/${attachment.id}`}
+                    download={attachment.original_filename}
+                    className="attachment-file-link"
+                  >
+                    <File size={16} />
+                    <span className="attachment-file-name">{attachment.original_filename}</span>
+                    <span className="attachment-file-size">({formatFileSize(attachment.size)})</span>
+                    <Download size={14} className="attachment-download-icon" />
+                  </a>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
         <ReactMarkdown
           components={{
             pre: ({ children }) => <pre>{children}</pre>,
@@ -591,7 +707,59 @@ export default function ChatView({
         </div>
 
         <div className="input-container">
+          {/* File Attachments Preview */}
+          {pendingAttachments.length > 0 && (
+            <div className="attachments-preview">
+              {pendingAttachments.map(attachment => (
+                <div key={attachment.id} className="attachment-chip">
+                  {isImageFile(attachment.mime_type) ? (
+                    <div className="attachment-thumbnail">
+                      <img src={`/api/uploads/${attachment.id}`} alt={attachment.original_filename} />
+                    </div>
+                  ) : (
+                    <div className="attachment-icon">
+                      <File size={16} />
+                    </div>
+                  )}
+                  <div className="attachment-info">
+                    <span className="attachment-name">{attachment.original_filename}</span>
+                    <span className="attachment-size">{formatFileSize(attachment.size)}</span>
+                  </div>
+                  <button
+                    type="button"
+                    className="attachment-remove"
+                    onClick={() => handleRemoveAttachment(attachment.id)}
+                    aria-label="Remove attachment"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
           <form className="input-wrapper" onSubmit={handleSubmit}>
+            {/* Hidden file input */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              onChange={onFileInputChange}
+              style={{ display: 'none' }}
+              accept="*/*"
+            />
+            
+            {/* Attach button */}
+            <button
+              type="button"
+              className="attach-button"
+              onClick={handleAttachClick}
+              disabled={isStreaming || isUploading}
+              aria-label="Attach files"
+            >
+              <Paperclip size={18} />
+            </button>
+
             <textarea
               ref={inputRef}
               className="chat-input"

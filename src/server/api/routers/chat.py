@@ -1,9 +1,10 @@
 import asyncio
+from typing import List
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends
 from copilot.generated.session_events import SessionEventType
-from domain.interfaces import SessionRepository, CopilotService, WorkspaceService
+from domain.interfaces import SessionRepository, CopilotService, WorkspaceService, FileAttachmentRepository
 from domain.models import Session, Message
-from api.deps import get_session_repo, get_copilot_service, get_workspace_service, get_global_state, GlobalState
+from api.deps import get_session_repo, get_copilot_service, get_workspace_service, get_global_state, get_file_attachment_repo, GlobalState
 
 router = APIRouter()
 
@@ -14,6 +15,7 @@ async def websocket_chat(
     session_repo: SessionRepository = Depends(get_session_repo),
     copilot_service: CopilotService = Depends(get_copilot_service),
     workspace_service: WorkspaceService = Depends(get_workspace_service),
+    file_attachment_repo: FileAttachmentRepository = Depends(get_file_attachment_repo),
     state: GlobalState = Depends(get_global_state)
 ):
     await websocket.accept()
@@ -44,9 +46,18 @@ async def websocket_chat(
             
             elif msg_type == "message":
                 content = data.get("content", "")
+                attachment_ids = data.get("attachment_ids", [])
                 
-                # Create user message
-                user_msg = Message(role="user", content=content)
+                # Retrieve file attachments from repository
+                attachments = []
+                if attachment_ids:
+                    for file_id in attachment_ids:
+                        attachment = await file_attachment_repo.get(file_id)
+                        if attachment:
+                            attachments.append(attachment)
+                
+                # Create user message with attachments
+                user_msg = Message(role="user", content=content, attachments=attachments)
                 session.messages.append(user_msg)
                 
                 # Update session name if first message
@@ -62,10 +73,17 @@ async def websocket_chat(
                 
                 # Create Copilot SDK session
                 try:
+                    # Use session workspace, fallback to current workspace if empty
+                    effective_workspace = session.workspace or workspace_service.get_current()
+                    
+                    # Get skill directories for the effective workspace
+                    skill_dirs = await workspace_service.get_skill_directories(effective_workspace)
+                    
                     sdk_session = await copilot_service.create_session(
                         model=session.model,
-                        workspace=session.workspace,
-                        session_id=session_id
+                        workspace=effective_workspace,
+                        session_id=session_id,
+                        skill_directories=skill_dirs if skill_dirs else None
                     )
                     
                     assistant_content = []
@@ -124,7 +142,22 @@ async def websocket_chat(
                     else:
                         full_prompt = content
                     
-                    await sdk_session.send_and_wait({"prompt": full_prompt})
+                    # Prepare SDK attachments from file attachments
+                    sdk_attachments = []
+                    if attachments:
+                        for attachment in attachments:
+                            sdk_attachments.append({
+                                "type": "file",
+                                "path": attachment.path,
+                                "displayName": attachment.original_filename
+                            })
+                    
+                    # Send message with attachments to SDK
+                    message_options = {"prompt": full_prompt}
+                    if sdk_attachments:
+                        message_options["attachments"] = sdk_attachments
+                    
+                    await sdk_session.send_and_wait(message_options)
                     
                     # Create assistant message
                     assistant_msg = Message(

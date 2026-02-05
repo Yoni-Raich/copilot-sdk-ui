@@ -1,8 +1,9 @@
 from typing import List, Optional, Dict
 import uuid
+import os
 from datetime import datetime
-from domain.interfaces import SessionRepository, PlanRepository
-from domain.models import Session, SessionCreate, SessionInfo, Plan, PlanCreate
+from domain.interfaces import SessionRepository, PlanRepository, FileAttachmentRepository
+from domain.models import Session, SessionCreate, SessionInfo, Plan, PlanCreate, FileAttachment
 
 class InMemorySessionRepository(SessionRepository):
     def __init__(self):
@@ -76,3 +77,30 @@ class InMemoryPlanRepository(PlanRepository):
             self.plans[session_id] = [p for p in self.plans[session_id] if p.id != plan_id]
             return True
         return False
+
+class InMemoryFileAttachmentRepository(FileAttachmentRepository):
+    def __init__(self):
+        self.attachments: Dict[str, FileAttachment] = {}
+
+    async def save(self, attachment: FileAttachment) -> FileAttachment:
+        self.attachments[attachment.id] = attachment
+        return attachment
+
+    async def get(self, file_id: str) -> Optional[FileAttachment]:
+        return self.attachments.get(file_id)
+
+    async def delete(self, file_id: str) -> bool:
+        if file_id in self.attachments:
+            attachment = self.attachments[file_id]
+            # Delete the physical file
+            if os.path.exists(attachment.path):
+                try:
+                    os.remove(attachment.path)
+                except Exception:
+                    pass  # Continue even if file deletion fails
+            del self.attachments[file_id]
+            return True
+        return False
+
+    async def list_by_session(self, session_id: str) -> List[FileAttachment]:
+        return [a for a in self.attachments.values() if a.session_id == session_id]

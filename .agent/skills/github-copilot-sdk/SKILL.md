@@ -148,6 +148,80 @@ For detailed documentation on advanced patterns, see the reference files:
 - **Multiple Sessions**: See [references/sessions.md](references/sessions.md) for managing parallel conversations
 - **MCP Servers**: See [references/advanced.md](references/advanced.md) for MCP integration
 
+## Working Directory & Skills
+
+The SDK's working directory (`cwd`) and skills are configured at different levels:
+
+### Client Options (CopilotClientOptions)
+
+Set the working directory when creating the client:
+
+```python
+from copilot import CopilotClient
+
+# Set working directory for all file operations
+client = CopilotClient({
+    "cwd": "/path/to/workspace",  # Working directory for CLI
+    "auto_start": True,           # Auto-start CLI server (default)
+})
+await client.start()
+```
+
+**Key options:**
+- `cwd`: Working directory for the CLI process (default: current process's cwd)
+- `cli_path`: Path to Copilot CLI executable (default: "copilot")
+- `use_stdio`: Use stdio transport instead of TCP (default: True)
+- `log_level`: Logging level
+
+### Session Config (SessionConfig)
+
+Configure skills when creating a session:
+
+```python
+session = await client.create_session({
+    "model": "gpt-4.1",
+    "streaming": True,
+    "skill_directories": [".claude/skills", ".agent/skills"],  # Relative to cwd
+    "disabled_skills": ["skill-to-disable"],  # Optional
+})
+```
+
+**Key options:**
+- `skill_directories`: List of directories to load skills from (relative to cwd)
+- `disabled_skills`: List of skill names to disable
+- `mcp_servers`: Dict of MCP server configurations
+- `custom_agents`: List of custom agent configurations
+
+### Skills Directory Structure
+
+Skills are stored in directories with a `SKILL.md` file:
+
+```
+workspace/
+├── .claude/skills/
+│   └── my-skill/
+│       └── SKILL.md
+└── .agent/skills/
+    └── another-skill/
+        ├── SKILL.md
+        └── references/
+            └── additional-docs.md
+```
+
+### SKILL.md Format
+
+```yaml
+---
+name: my-skill
+description: What this skill does and when to use it.
+allowed-tools: Bash(my-tool:*)
+---
+
+# My Skill
+
+Markdown content with instructions, examples, and documentation.
+```
+
 ## Examples & Scripts
 
 Use the scripts in the `scripts/` directory to explore and test the SDK capabilities:
