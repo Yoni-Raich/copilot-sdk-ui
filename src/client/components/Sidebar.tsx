@@ -1,21 +1,15 @@
 import React from 'react';
 import {
   MessageSquarePlus,
-  Search,
   Puzzle,
   FolderOpen,
   Trash2,
   MessageSquare,
-  Settings,
-  User,
   Server,
   ClipboardList,
   FileSearch,
   FileText,
   Zap,
-  LogIn,
-  LogOut,
-  FolderPlus,
   ChevronRight,
 } from 'lucide-react';
 import { Session } from '../types';
@@ -36,10 +30,6 @@ interface SidebarProps {
   workspace: string;
   isOpen: boolean;
   onToggle: () => void;
-  isLoggedIn?: boolean;
-  userName?: string;
-  onLogin?: () => void;
-  onLogout?: () => void;
 }
 
 export default function Sidebar({
@@ -58,10 +48,6 @@ export default function Sidebar({
   workspace,
   isOpen,
   onToggle,
-  isLoggedIn = false,
-  userName,
-  onLogin,
-  onLogout,
 }: SidebarProps) {
   const getWorkspaceName = (path: string) => {
     const parts = path.split(/[/\\]/);
@@ -106,11 +92,6 @@ export default function Sidebar({
           <div className="nav-item" onClick={onNewChat}>
             <MessageSquarePlus size={18} />
             New chat
-          </div>
-
-          <div className="nav-item">
-            <Search size={18} />
-            Search chats
           </div>
 
           {/* Quick Actions Section */}
@@ -207,34 +188,7 @@ export default function Sidebar({
             </span>
           </div>
 
-          {/* User Profile Section */}
-          <div className="user-section">
-            {isLoggedIn ? (
-              <>
-                <div className="user-profile">
-                  <div className="user-avatar">
-                    <User size={16} />
-                  </div>
-                  <span className="user-name">{userName || 'User'}</span>
-                </div>
-                <button
-                  className="btn btn-ghost btn-icon logout-btn"
-                  onClick={onLogout}
-                  title="Log out"
-                >
-                  <LogOut size={16} />
-                </button>
-              </>
-            ) : (
-              <div className="user-profile login-prompt" onClick={onLogin}>
-                <div className="user-avatar">
-                  <User size={16} />
-                </div>
-                <span className="user-name">Log in</span>
-                <LogIn size={16} className="login-icon" />
-              </div>
-            )}
-          </div>
+
         </div>
       </aside>
     </>

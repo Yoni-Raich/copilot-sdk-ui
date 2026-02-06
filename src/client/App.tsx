@@ -5,8 +5,6 @@ import SkillsModal from './components/SkillsModal';
 import WorkspaceModal from './components/WorkspaceModal';
 import InstructionsModal from './components/InstructionsModal';
 import MCPModal from './components/MCPModal';
-import PlanModal from './components/PlanModal';
-import ReviewModal from './components/ReviewModal';
 import { Session, Skill, Model } from './types';
 
 export default function App() {
@@ -18,8 +16,8 @@ export default function App() {
   const [showWorkspaceModal, setShowWorkspaceModal] = useState(false);
   const [showInstructionsModal, setShowInstructionsModal] = useState(false);
   const [showMCPModal, setShowMCPModal] = useState(false);
-  const [showPlanModal, setShowPlanModal] = useState(false);
-  const [showReviewModal, setShowReviewModal] = useState(false);
+  // pendingModal lets sidebar trigger modals rendered inside ChatView (which has WS access)
+  const [pendingModal, setPendingModal] = useState<string | null>(null);
   // Start with sidebar closed on mobile
   const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth > 768);
   const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 768);
@@ -203,8 +201,8 @@ export default function App() {
         onOpenWorkspace={() => { setShowWorkspaceModal(true); closeSidebarOnMobile(); }}
         onOpenInstructions={() => { setShowInstructionsModal(true); closeSidebarOnMobile(); }}
         onOpenMCP={() => { setShowMCPModal(true); closeSidebarOnMobile(); }}
-        onOpenPlan={() => { setShowPlanModal(true); closeSidebarOnMobile(); }}
-        onOpenReview={() => { setShowReviewModal(true); closeSidebarOnMobile(); }}
+        onOpenPlan={() => { setPendingModal('plan'); closeSidebarOnMobile(); }}
+        onOpenReview={() => { setPendingModal('review'); closeSidebarOnMobile(); }}
         onCompact={() => { handleCompact(); closeSidebarOnMobile(); }}
         workspace={workspace}
         isOpen={sidebarOpen}
@@ -222,6 +220,9 @@ export default function App() {
         onModelChange={updateModel}
         onSelectSession={setActiveSessionId}
         onRenameSession={renameSession}
+        onOpenMCP={() => setShowMCPModal(true)}
+        pendingModal={pendingModal}
+        onModalOpened={() => setPendingModal(null)}
       />
 
       {showSkillsModal && (
@@ -253,32 +254,6 @@ export default function App() {
         <MCPModal
           isOpen={showMCPModal}
           onClose={() => setShowMCPModal(false)}
-        />
-      )}
-
-      {showPlanModal && (
-        <PlanModal
-          isOpen={showPlanModal}
-          onClose={() => setShowPlanModal(false)}
-          sessionId={activeSessionId}
-          onExecutePlan={(plan) => {
-            // Execute plan via WebSocket (handled by ChatView)
-            console.log('Execute plan:', plan);
-            setShowPlanModal(false);
-          }}
-        />
-      )}
-
-      {showReviewModal && (
-        <ReviewModal
-          isOpen={showReviewModal}
-          onClose={() => setShowReviewModal(false)}
-          sessionId={activeSessionId}
-          workspace={workspace}
-          onRunReview={(scope) => {
-            console.log('Run review:', scope);
-            setShowReviewModal(false);
-          }}
         />
       )}
     </div>

@@ -98,6 +98,9 @@ class MCPService(ABC):
     async def list(self) -> List[MCPServer]: ...
     
     @abstractmethod
+    async def get_enabled(self) -> List[MCPServer]: ...
+    
+    @abstractmethod
     async def create(self, data: MCPServerCreate) -> MCPServer: ...
     
     @abstractmethod
@@ -117,7 +120,24 @@ class CopilotService(ABC):
     async def list_models(self) -> List[ModelInfo]: ...
     
     @abstractmethod
-    async def create_session(self, model: str, workspace: str, session_id: Optional[str] = None, skill_directories: Optional[List[str]] = None) -> Any: ...
+    async def create_session(
+        self,
+        model: str,
+        workspace: str,
+        session_id: Optional[str] = None,
+        skill_directories: Optional[List[str]] = None,
+        mcp_servers: Optional[Dict[str, Any]] = None,
+        system_message: Optional[str] = None,
+    ) -> Any: ...
+    
+    @abstractmethod
+    async def resume_session(self, session_id: str) -> Any: ...
+    
+    @abstractmethod
+    def get_active_session(self, session_id: str) -> Any: ...
+    
+    @abstractmethod
+    def remove_active_session(self, session_id: str): ...
 
 class FileAttachmentRepository(ABC):
     @abstractmethod

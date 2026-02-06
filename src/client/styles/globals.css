@@ -31,6 +31,10 @@ body {
   background-color: var(--bg-primary);
   color: var(--text-primary);
   overflow: hidden;
+  /* Safe area support for notched devices */
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
 }
 
 /* Scrollbar Styles */
@@ -900,12 +904,14 @@ body {
 
   /* Input area adjustments */
   .input-container {
-    padding: 12px 12px 16px;
-    padding-bottom: calc(16px + env(safe-area-inset-bottom));
-    position: sticky;
-    bottom: 0;
+    padding: 0;
+    padding-bottom: env(safe-area-inset-bottom);
     background-color: var(--bg-primary);
     z-index: 20;
+  }
+
+  .input-wrapper {
+    padding: 8px 12px 12px;
   }
 
   .chat-input {
@@ -917,35 +923,28 @@ body {
   }
 
   .send-button {
-    width: 44px;
-    height: 44px;
+    width: 40px;
+    height: 40px;
     right: 16px;
-    bottom: 20px;
-    /* Ensure touch targets are large */
+    bottom: 16px;
+    touch-action: manipulation;
   }
 
   .attach-button {
-    width: 44px;
-    height: 44px;
+    width: 40px;
+    height: 40px;
     left: 16px;
-    bottom: 20px;
-    /* Ensure touch targets are large */
+    bottom: 16px;
+    touch-action: manipulation;
   }
   
-  /* Remove hover effects on touch to prevent double-tap needed */
-  @media (hover: none) {
-    .send-button:hover {
-      background-color: transparent;
-      color: var(--text-muted);
-    }
-    .send-button.active:hover {
-        background-color: var(--accent-color);
-        color: white;
-    }
-    .attach-button:hover {
-      background-color: var(--text-muted);
-      color: var(--bg-primary);
-    }
+  /* Attachments preview mobile */
+  .attachments-preview {
+    padding: 8px 12px;
+  }
+
+  .attachment-chip {
+    max-width: 200px;
   }
 
   /* Command palette adjustments */
@@ -2398,6 +2397,36 @@ body {
 }
 
 /* ========================
+   Touch-only hover prevention
+   ======================== */
+@media (hover: none) and (pointer: coarse) {
+  .send-button:hover:not(.active) {
+    background-color: var(--text-muted);
+  }
+  .attach-button:hover {
+    background-color: var(--text-muted);
+  }
+  .nav-item:hover {
+    background-color: transparent;
+    color: var(--text-secondary);
+  }
+  .nav-item:active {
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+  }
+  .session-item:hover {
+    background-color: transparent;
+  }
+  .session-item:active {
+    background-color: var(--bg-tertiary);
+  }
+  /* Always show delete button on touch devices */
+  .session-item .delete-btn {
+    opacity: 1;
+  }
+}
+
+/* ========================
    Light Theme Support
    ======================== */
 :root[data-theme="light"] {
@@ -2608,4 +2637,214 @@ body {
 .attachment-download-icon {
   color: var(--text-secondary);
   flex-shrink: 0;
+}
+
+/* ========================
+   Tool Call Cards
+   ======================== */
+.message-tool-calls {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.tool-call-card {
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: var(--bg-secondary);
+  font-size: 13px;
+}
+
+.tool-call-card.running {
+  border-color: var(--accent-color);
+}
+
+.tool-call-card.complete {
+  border-color: var(--border-color);
+}
+
+.tool-call-card.error {
+  border-color: var(--error-color);
+}
+
+.tool-call-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  min-height: 44px; /* Touch-friendly */
+  user-select: none;
+  transition: background-color 0.15s ease;
+}
+
+.tool-call-header:hover {
+  background-color: var(--bg-tertiary);
+}
+
+.tool-call-icon {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.tool-call-name {
+  flex: 1;
+  font-weight: 500;
+  color: var(--text-primary);
+  font-family: 'Fira Code', 'Consolas', monospace;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tool-call-status-icon {
+  flex-shrink: 0;
+}
+
+.tool-call-status-icon.spinning {
+  color: var(--accent-color);
+}
+
+.tool-call-status-icon.status-ok {
+  color: var(--success-color);
+}
+
+.tool-call-status-icon.status-error {
+  color: var(--error-color);
+}
+
+.tool-call-chevron {
+  color: var(--text-muted);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.tool-call-body {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.25s ease-out;
+}
+
+.tool-call-body.expanded {
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.tool-call-section {
+  padding: 8px 12px;
+  border-top: 1px solid var(--border-color);
+}
+
+.tool-call-section-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+
+.tool-call-args,
+.tool-call-result {
+  font-family: 'Fira Code', 'Consolas', monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  background-color: var(--bg-primary);
+  padding: 8px 10px;
+  border-radius: 6px;
+  max-height: 200px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  margin: 0;
+}
+
+/* ========================
+   Code Block Wrapper (syntax highlighting)
+   ======================== */
+.code-block-wrapper {
+  position: relative;
+  margin: 12px 0;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+}
+
+.code-block-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px;
+  background-color: var(--bg-tertiary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.code-block-lang {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.code-copy-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 8px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+}
+
+.code-copy-btn:hover {
+  background-color: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+/* Override syntax highlighter margins */
+.message-content .code-block-wrapper pre {
+  margin: 0 !important;
+  padding: 16px !important;
+  background-color: #1e1e1e !important;
+}
+
+/* ========================
+   Mobile Enhancements for Tool Cards
+   ======================== */
+@media (max-width: 768px) {
+  .tool-call-card {
+    font-size: 12px;
+  }
+
+  .tool-call-header {
+    padding: 10px 12px;
+  }
+
+  .tool-call-args,
+  .tool-call-result {
+    font-size: 11px;
+    max-height: 150px;
+  }
+
+  .code-block-wrapper {
+    margin: 8px 0;
+  }
+
+  .code-block-header {
+    padding: 4px 10px;
+  }
+
+  .message-content .code-block-wrapper pre {
+    padding: 12px !important;
+    font-size: 12px !important;
+  }
 }

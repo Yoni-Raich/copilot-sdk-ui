@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   MessageSquarePlus,
-  History,
   Share2,
   Info,
   Palette,
@@ -12,14 +11,10 @@ import {
   FileSearch,
   Zap,
   Server,
-  LogIn,
-  LogOut,
-  FolderPlus,
   List,
   Settings,
   Terminal,
   Folder,
-  User,
   Command,
 } from 'lucide-react';
 
@@ -27,7 +22,7 @@ export interface SlashCommand {
   id: string;
   name: string;
   description: string;
-  category: 'session' | 'settings' | 'workspace' | 'tools' | 'auth' | 'mcp';
+  category: 'session' | 'settings' | 'workspace' | 'tools' | 'mcp';
   icon: React.ReactNode;
   shortcut?: string;
 }
@@ -35,7 +30,6 @@ export interface SlashCommand {
 const SLASH_COMMANDS: SlashCommand[] = [
   // Session Commands
   { id: 'new', name: '/new', description: 'Start a new chat session', category: 'session', icon: <MessageSquarePlus size={16} /> },
-  { id: 'resume', name: '/resume', description: 'Resume a previous session', category: 'session', icon: <History size={16} /> },
   { id: 'share', name: '/share', description: 'Export or share current session', category: 'session', icon: <Share2 size={16} /> },
   { id: 'session', name: '/session', description: 'View session info and details', category: 'session', icon: <Info size={16} /> },
 
@@ -47,7 +41,6 @@ const SLASH_COMMANDS: SlashCommand[] = [
 
   // Workspace Commands
   { id: 'cwd', name: '/cwd', description: 'Show current working directory', category: 'workspace', icon: <Folder size={16} /> },
-  { id: 'add-dir', name: '/add-dir', description: 'Add directory to workspace', category: 'workspace', icon: <FolderPlus size={16} /> },
   { id: 'list-dirs', name: '/list-dirs', description: 'List allowed directories', category: 'workspace', icon: <List size={16} /> },
 
   // Tools Commands
@@ -60,11 +53,6 @@ const SLASH_COMMANDS: SlashCommand[] = [
   { id: 'mcp', name: '/mcp', description: 'Manage MCP servers', category: 'mcp', icon: <Server size={16} /> },
   { id: 'mcp-show', name: '/mcp show', description: 'List MCP servers', category: 'mcp', icon: <Server size={16} /> },
   { id: 'mcp-add', name: '/mcp add', description: 'Add MCP server', category: 'mcp', icon: <Server size={16} /> },
-
-  // Auth Commands
-  { id: 'user', name: '/user', description: 'View current user info', category: 'auth', icon: <User size={16} /> },
-  { id: 'login', name: '/login', description: 'Log in to GitHub Copilot', category: 'auth', icon: <LogIn size={16} /> },
-  { id: 'logout', name: '/logout', description: 'Log out from GitHub Copilot', category: 'auth', icon: <LogOut size={16} /> },
 ];
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -73,7 +61,6 @@ const CATEGORY_LABELS: Record<string, string> = {
   workspace: 'Workspace',
   tools: 'Tools',
   mcp: 'MCP Servers',
-  auth: 'Authentication',
 };
 
 interface CommandPaletteProps {

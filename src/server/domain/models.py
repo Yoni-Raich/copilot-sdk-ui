@@ -183,30 +183,4 @@ class ReviewResponse(BaseModel):
     summary: ReviewSummary
 
 
-# WebSocket message types
-class WSMessage(BaseModel):
-    """Base WebSocket message."""
-    type: str
 
-
-class WSChatMessage(WSMessage):
-    """Chat message from client."""
-    type: Literal["message"] = "message"
-    content: str
-
-
-class WSSetModel(WSMessage):
-    """Set model message from client."""
-    type: Literal["set_model"] = "set_model"
-    model: str
-
-
-class WSCancel(WSMessage):
-    """Cancel message from client."""
-    type: Literal["cancel"] = "cancel"
-
-
-class WSExecute(WSMessage):
-    """Execute command message from client."""
-    type: Literal["execute"] = "execute"
-    command: str

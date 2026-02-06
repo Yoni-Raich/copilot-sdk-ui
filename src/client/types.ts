@@ -43,3 +43,11 @@ export interface Model {
   name: string;
   provider: string;
 }
+
+export interface ToolCall {
+  id: string;
+  name: string;
+  arguments: string;
+  status: 'running' | 'complete' | 'error';
+  result?: string;
+}

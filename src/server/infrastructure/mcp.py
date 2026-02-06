@@ -10,6 +10,9 @@ class InMemoryMCPService(MCPService):
     async def list(self) -> List[MCPServer]:
         return list(self.servers.values())
 
+    async def get_enabled(self) -> List[MCPServer]:
+        return [s for s in self.servers.values() if s.enabled]
+
     async def create(self, data: MCPServerCreate) -> MCPServer:
         server = MCPServer(
             id=str(uuid.uuid4()),

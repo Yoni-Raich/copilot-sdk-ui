@@ -1,15 +1,19 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Send, Square, Menu, Sparkles, ChevronDown, Paperclip, X, File, Image as ImageIcon, Download } from 'lucide-react';
+import { Send, Square, Menu, Sparkles, ChevronDown, Paperclip, X, File, Image as ImageIcon, Download, Copy, Check } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
-import { Session, Message, Model, FileAttachment } from '../types';
+import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { Session, Message, Model, FileAttachment, ToolCall } from '../types';
 import CommandPalette, { SlashCommand, SLASH_COMMANDS } from './CommandPalette';
 import { SessionMenu, SettingsDropdown } from './HeaderDropdowns';
 import SessionModal from './SessionModal';
 import ContextModal from './ContextModal';
 import SettingsModal from './SettingsModal';
-import MCPModal from './MCPModal';
 import PlanModal from './PlanModal';
 import ReviewModal from './ReviewModal';
+import ToolCallCard from './ToolCallCard';
 
 interface ChatViewProps {
   session: Session | undefined;
@@ -22,6 +26,9 @@ interface ChatViewProps {
   onModelChange: (model: string) => void;
   onSelectSession?: (id: string) => void;
   onRenameSession?: (id: string, name: string) => void;
+  onOpenMCP?: () => void;
+  pendingModal?: string | null;
+  onModalOpened?: () => void;
 }
 
 export default function ChatView({
@@ -35,12 +42,19 @@ export default function ChatView({
   onModelChange,
   onSelectSession,
   onRenameSession,
+  onOpenMCP,
+  pendingModal,
+  onModalOpened,
 }: ChatViewProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamContent, setStreamContent] = useState('');
+  const streamContentRef = useRef(''); // Avoids stale closure in WS handler
   const [showModelDropdown, setShowModelDropdown] = useState(false);
+
+  // Tool calls tracking
+  const [toolCalls, setToolCalls] = useState<ToolCall[]>([]);
 
   // File attachments state
   const [pendingAttachments, setPendingAttachments] = useState<FileAttachment[]>([]);
@@ -51,14 +65,12 @@ export default function ChatView({
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [inputRect, setInputRect] = useState<DOMRect | null>(null);
 
-  // Modal states
+  // Modal states (only modals that need WS access live here)
   const [showSessionModal, setShowSessionModal] = useState(false);
   const [showContextModal, setShowContextModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
-  const [showMCPModal, setShowMCPModal] = useState(false);
   const [showPlanModal, setShowPlanModal] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
-  const [showResumeModal, setShowResumeModal] = useState(false);
 
   // Theme state
   const [currentTheme, setCurrentTheme] = useState<'auto' | 'dark' | 'light'>('dark');
@@ -122,6 +134,13 @@ export default function ChatView({
     }
   }, [input]);
 
+  // Handle pending modals triggered by sidebar (via App.tsx)
+  useEffect(() => {
+    if (pendingModal === 'plan') setShowPlanModal(true);
+    if (pendingModal === 'review') setShowReviewModal(true);
+    if (pendingModal) onModalOpened?.();
+  }, [pendingModal, onModalOpened]);
+
   const connectWebSocket = useCallback((sid: string) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       return;
@@ -142,39 +161,65 @@ export default function ChatView({
           setMessages(prev => [...prev, data.message]);
           break;
         case 'stream':
-          setStreamContent(prev => prev + data.content);
+          setStreamContent(prev => {
+            const next = prev + data.content;
+            streamContentRef.current = next;
+            return next;
+          });
           break;
-        case 'complete':
-          // Fallback: If server message is empty but we have streamed content, use it
-          // This prevents "disappearing" messages if the server payload is malformed
+        case 'reasoning':
+          // Could render reasoning in a collapsible section later
+          break;
+        case 'turn_start':
+          break;
+        case 'turn_end':
+          break;
+        case 'tool_start':
+          setToolCalls(prev => [...prev, {
+            id: data.tool_id || data.tool,
+            name: data.tool,
+            arguments: data.arguments || '',
+            status: 'running',
+          }]);
+          break;
+        case 'tool_complete':
+          setToolCalls(prev => prev.map(tc =>
+            tc.id === (data.tool_id || data.tool)
+              ? { ...tc, status: 'complete' as const, result: data.result }
+              : tc
+          ));
+          break;
+        case 'complete': {
           const finalMsg = data.message;
-          if (!finalMsg.content && streamContent) {
-            console.warn('ChatView: Received empty completion message, using stream buffer');
-            finalMsg.content = streamContent;
+          // Fix stale closure: use ref if server message is empty but we streamed content
+          if (!finalMsg.content && streamContentRef.current) {
+            finalMsg.content = streamContentRef.current;
+          }
+          // Attach tool_calls to message for history display
+          if (data.tool_calls?.length > 0) {
+            finalMsg.tool_calls = data.tool_calls;
           }
           setMessages(prev => [...prev, finalMsg]);
           setStreamContent('');
+          streamContentRef.current = '';
+          setToolCalls([]);
           setIsStreaming(false);
-          // Force scroll to bottom on completion to show final result
           setUserScrolledUp(false);
           break;
+        }
         case 'cancelled':
           setStreamContent('');
+          streamContentRef.current = '';
+          setToolCalls([]);
           setIsStreaming(false);
           break;
         case 'error':
           console.error('WebSocket error:', data.error);
           setStreamContent(prev => prev + '\n\nError: ' + data.error);
+          streamContentRef.current += '\n\nError: ' + data.error;
           setIsStreaming(false);
           break;
         case 'model_set':
-          console.log('Model set to:', data.model);
-          break;
-        case 'tool_start':
-          setStreamContent(prev => `${prev}\n\n> 🔧 **Tool Call:** \`${data.tool}\`\n> \n> Arguments:\n> \`\`\`json\n> ${data.arguments}\n> \`\`\`\n\n`);
-          break;
-        case 'tool_complete':
-          setStreamContent(prev => `${prev}\n\n> ✅ **Tool Result:** \`${data.tool}\`\n\n`);
           break;
       }
     };
@@ -229,24 +274,7 @@ export default function ChatView({
       e.preventDefault();
       // Ensure we're not composing (IME)
       if (e.nativeEvent.isComposing) return;
-      
-      if (input.trim() && !isStreaming) {
-         if (!sessionId) {
-            onNewChat();
-         } else if (wsRef.current?.readyState === WebSocket.OPEN) {
-            setIsStreaming(true);
-            const attachmentIds = pendingAttachments.map(att => att.id);
-            wsRef.current.send(JSON.stringify({
-               type: 'message',
-               content: input.trim(),
-               attachment_ids: attachmentIds.length > 0 ? attachmentIds : undefined,
-            }));
-            setInput('');
-            setPendingAttachments([]); // Clear attachments after sending
-            // Reset height
-            if (inputRef.current) inputRef.current.style.height = 'auto';
-         }
-      }
+      handleSubmit(e);
     }
     // Handle Escape to close command palette
     if (e.key === 'Escape' && showCommandPalette) {
@@ -300,9 +328,6 @@ export default function ChatView({
       case 'new':
         onNewChat();
         break;
-      case 'resume':
-        setShowResumeModal(true);
-        break;
       case 'session':
         setShowSessionModal(true);
         break;
@@ -315,7 +340,7 @@ export default function ChatView({
       case 'mcp':
       case 'mcp-show':
       case 'mcp-add':
-        setShowMCPModal(true);
+        onOpenMCP?.();
         break;
       case 'plan':
         setShowPlanModal(true);
@@ -495,12 +520,39 @@ export default function ChatView({
 
   const currentModelInfo = models.find(m => m.id === currentModel);
 
-  // Debug models
-  useEffect(() => {
-    if (models.length === 0) {
-      console.warn('ChatView: No models provided');
+  const CodeBlock = ({ className, children, ...props }: any) => {
+    const [copied, setCopied] = useState(false);
+    const match = /language-(\w+)/.exec(className || '');
+    const codeStr = String(children).replace(/\n$/, '');
+
+    const handleCopy = () => {
+      navigator.clipboard.writeText(codeStr);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    };
+
+    if (match) {
+      return (
+        <div className="code-block-wrapper">
+          <div className="code-block-header">
+            <span className="code-block-lang">{match[1]}</span>
+            <button className="code-copy-btn" onClick={handleCopy} title="Copy code">
+              {copied ? <Check size={14} /> : <Copy size={14} />}
+            </button>
+          </div>
+          <SyntaxHighlighter
+            style={vscDarkPlus}
+            language={match[1]}
+            PreTag="div"
+            customStyle={{ margin: 0, borderRadius: '0 0 8px 8px', fontSize: '13px' }}
+          >
+            {codeStr}
+          </SyntaxHighlighter>
+        </div>
+      );
     }
-  }, [models]);
+    return <code className={className} {...props}>{children}</code>;
+  };
 
   const renderMessage = (message: Message) => (
     <div key={message.id} className="message">
@@ -545,18 +597,18 @@ export default function ChatView({
             ))}
           </div>
         )}
+        {/* Render tool calls for this message if saved */}
+        {(message as any).tool_calls?.length > 0 && (
+          <div className="message-tool-calls">
+            {(message as any).tool_calls.map((tc: ToolCall) => (
+              <ToolCallCard key={tc.id} toolCall={tc} />
+            ))}
+          </div>
+        )}
         <ReactMarkdown
-          components={{
-            pre: ({ children }) => <pre>{children}</pre>,
-            code: ({ className, children, ...props }) => {
-              const match = /language-(\w+)/.exec(className || '');
-              return (
-                <code className={className} {...props}>
-                  {children}
-                </code>
-              );
-            },
-          }}
+          remarkPlugins={[remarkGfm]}
+          rehypePlugins={[rehypeRaw]}
+          components={{ code: CodeBlock }}
         >
           {message.content}
         </ReactMarkdown>
@@ -577,7 +629,6 @@ export default function ChatView({
           {/* Session Menu Dropdown */}
           <SessionMenu
             onNewChat={onNewChat}
-            onResumeSession={() => setShowResumeModal(true)}
             onShareSession={handleShareSession}
             onViewSessionInfo={() => setShowSessionModal(true)}
           />
@@ -672,14 +723,22 @@ export default function ChatView({
                     <span className="message-role">Copilot</span>
                   </div>
                   <div className="message-content">
-                    <div className="thinking-indicator">
-                      <div className="thinking-animation">
-                        <div className="thinking-circle"></div>
-                        <div className="thinking-circle"></div>
-                        <div className="thinking-circle"></div>
+                    {toolCalls.length > 0 ? (
+                      <div className="message-tool-calls">
+                        {toolCalls.map(tc => (
+                          <ToolCallCard key={tc.id} toolCall={tc} />
+                        ))}
                       </div>
-                      <span className="thinking-text">Thinking...</span>
-                    </div>
+                    ) : (
+                      <div className="thinking-indicator">
+                        <div className="thinking-animation">
+                          <div className="thinking-circle"></div>
+                          <div className="thinking-circle"></div>
+                          <div className="thinking-circle"></div>
+                        </div>
+                        <span className="thinking-text">Thinking...</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -697,7 +756,21 @@ export default function ChatView({
                     </div>
                   </div>
                   <div className="message-content">
-                    <ReactMarkdown>{streamContent}</ReactMarkdown>
+                    {/* Active tool calls (shown above streamed text) */}
+                    {toolCalls.length > 0 && (
+                      <div className="message-tool-calls">
+                        {toolCalls.map(tc => (
+                          <ToolCallCard key={tc.id} toolCall={tc} />
+                        ))}
+                      </div>
+                    )}
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      rehypePlugins={[rehypeRaw]}
+                      components={{ code: CodeBlock }}
+                    >
+                      {streamContent}
+                    </ReactMarkdown>
                   </div>
                 </div>
               )}
@@ -819,11 +892,6 @@ export default function ChatView({
       <SettingsModal
         isOpen={showSettingsModal}
         onClose={() => setShowSettingsModal(false)}
-      />
-
-      <MCPModal
-        isOpen={showMCPModal}
-        onClose={() => setShowMCPModal(false)}
       />
 
       <PlanModal

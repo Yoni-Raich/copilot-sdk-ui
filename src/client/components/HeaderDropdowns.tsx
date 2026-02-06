@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
   Settings,
   MessageSquarePlus,
-  History,
   Share2,
   Info,
   Palette,
@@ -12,22 +11,18 @@ import {
   Moon,
   Sun,
   Monitor,
-  LogIn,
-  LogOut,
-  User,
+  History,
 } from 'lucide-react';
 
 // Session Menu Dropdown
 interface SessionMenuProps {
   onNewChat: () => void;
-  onResumeSession: () => void;
   onShareSession: () => void;
   onViewSessionInfo: () => void;
 }
 
 export function SessionMenu({
   onNewChat,
-  onResumeSession,
   onShareSession,
   onViewSessionInfo,
 }: SessionMenuProps) {
@@ -68,16 +63,6 @@ export function SessionMenu({
             <span>New Chat</span>
             <span className="shortcut">Ctrl+N</span>
           </div>
-          <div
-            className="dropdown-item"
-            onClick={() => {
-              onResumeSession();
-              setIsOpen(false);
-            }}
-          >
-            <History size={16} />
-            <span>Resume Session</span>
-          </div>
           <div className="dropdown-divider" />
           <div
             className="dropdown-item"
@@ -112,10 +97,6 @@ interface SettingsDropdownProps {
   onOpenContext: () => void;
   onOpenUsage: () => void;
   onOpenSettings: () => void;
-  isLoggedIn?: boolean;
-  userName?: string;
-  onLogin?: () => void;
-  onLogout?: () => void;
 }
 
 export function SettingsDropdown({
@@ -124,10 +105,6 @@ export function SettingsDropdown({
   onOpenContext,
   onOpenUsage,
   onOpenSettings,
-  isLoggedIn = false,
-  userName,
-  onLogin,
-  onLogout,
 }: SettingsDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -242,36 +219,6 @@ export function SettingsDropdown({
           </div>
 
           {/* User section */}
-          <div className="dropdown-divider" />
-          {isLoggedIn ? (
-            <>
-              <div className="dropdown-item user-info">
-                <User size={16} />
-                <span>{userName || 'User'}</span>
-              </div>
-              <div
-                className="dropdown-item"
-                onClick={() => {
-                  onLogout?.();
-                  setIsOpen(false);
-                }}
-              >
-                <LogOut size={16} />
-                <span>Log Out</span>
-              </div>
-            </>
-          ) : (
-            <div
-              className="dropdown-item"
-              onClick={() => {
-                onLogin?.();
-                setIsOpen(false);
-              }}
-            >
-              <LogIn size={16} />
-              <span>Log In</span>
-            </div>
-          )}
         </div>
       )}
     </div>

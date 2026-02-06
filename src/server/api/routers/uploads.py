@@ -1,5 +1,6 @@
 import os
 import uuid
+import tempfile
 import mimetypes
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
@@ -10,8 +11,8 @@ from api.deps import get_file_attachment_repo
 
 router = APIRouter()
 
-# Base directory for uploads
-UPLOAD_BASE_DIR = "/tmp/uploads"
+# Base directory for uploads - cross-platform
+UPLOAD_BASE_DIR = os.path.join(tempfile.gettempdir(), "copilot-sdk-uploads")
 
 @router.post("/api/uploads", response_model=FileAttachment)
 async def upload_file(

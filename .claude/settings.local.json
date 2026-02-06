@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:github.com)",
+      "Bash(npm install)",
+      "Bash(npm install:*)",
+      "Bash(npx tsc:*)",
+      "Bash(timeout 5 npm run dev:*)",
+      "Bash(npm run dev:*)",
+      "Bash(copilot --help:*)",
+      "Bash(taskkill:*)",
+      "Bash(curl:*)",
+      "Bash(copilot:*)",
+      "Bash(npm run build:*)",
+      "Bash(dir \"%USERPROFILE%\\\\.copilot\\\\projects\")",
+      "Bash(dir /b \"%USERPROFILE%\\\\.copilot\")"
+    ]
+  }
+}
